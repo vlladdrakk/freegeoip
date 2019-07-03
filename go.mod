@@ -1,4 +1,4 @@
-module github.com/apilayer/freegeoip
+module github.com/vlladdrakk/freegeoip
 
 go 1.12
 
