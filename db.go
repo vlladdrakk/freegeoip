@@ -5,6 +5,7 @@
 package freegeoip
 
 import (
+	"archive/tar"
 	"compress/gzip"
 	"crypto/md5"
 	"encoding/hex"
@@ -20,6 +21,7 @@ import (
 	"path/filepath"
 	"sync"
 	"time"
+	"strings"
 
 	"github.com/howeyc/fsnotify"
 	"github.com/oschwald/maxminddb-golang"
@@ -201,13 +203,39 @@ func (db *DB) newReader(dbfile string) (*maxminddb.Reader, string, error) {
 		return nil, "", err
 	}
 	defer gzf.Close()
-	b, err := ioutil.ReadAll(gzf)
+
+	b, err := db.readArchive(gzf)
+
 	if err != nil {
 		return nil, "", err
 	}
+
 	checksum := fmt.Sprintf("%x", md5.Sum(b))
 	mmdb, err := maxminddb.FromBytes(b)
 	return mmdb, checksum, err
+}
+
+func (db *DB) readArchive(gzip *gzip.Reader) ([]byte, error) {
+	reader := tar.NewReader(gzip)
+
+	for true {
+		header, err := reader.Next()
+
+		if err == io.EOF {
+			break
+		}
+
+		// Find the .mmdb file
+		splitString := strings.Split(header.Name, ".")
+
+		if strings.Compare(splitString[len(splitString) - 1], "mmdb") == 0 {
+			buf, err := ioutil.ReadAll(reader)
+
+			return buf, err
+		}
+	}
+
+	return nil, errors.New("No db file selected")
 }
 
 func (db *DB) setReader(reader *maxminddb.Reader, modtime time.Time, checksum string) {
