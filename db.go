@@ -225,6 +225,10 @@ func (db *DB) readArchive(gzip *gzip.Reader) ([]byte, error) {
 			break
 		}
 
+		if err != nil {
+			return nil, errors.New("Failed to read archive")
+		}
+
 		// Find the .mmdb file
 		splitString := strings.Split(header.Name, ".")
 
